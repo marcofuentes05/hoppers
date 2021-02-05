@@ -1,5 +1,25 @@
 import numpy as np
 
+class Player:
+  def __init__(self, identifier, game):
+    self.identifier = identifier
+    self.game = game
+    self.positions = []
+  
+  def populate(self):
+    for i in range(10):
+      for j in range(10):
+        if self.game.table.table[i][j].value == self.identifier:
+          # print (self.identifier, i,j)
+          self.positions.append((i,j))
+  
+  def win(self):
+    self.hasWon = True
+    print("Que alegria!")
+
+  def __str__(self):
+    return str(self.positions)
+
 class Cell:
   possible_values = ('0', '1', '2')
   def __init__(self):
@@ -26,31 +46,22 @@ class Table():
         self.table[i][j].value = self.table[i][j].possible_values[1]
         self.table[self.boardSize - 1 - i][self.boardSize - 1 - j].value = self.table[i][j].possible_values[2]
       resta+=1
+  
   def toString(self):
     for i in range(10):
       strg = ""
       for j in range(10):
         strg += "{} ".format(self.table[i][j])
       print(strg)
+  
   def __str__(self):
     strg = ""
     for i in range(10):
       for j in range(10):
         strg += "{} ".format(self.table[i][j])
       strg += "\n"
-    return strg
-
-class Player():
-  def __init__(self, name, coins):
-    self.name = name
-    self.turn = False
-    self.hasWon = False
-    self.coins = coins
-  def __str__(self):
-    return self.name
-  def win(self):
-    self.hasWon = True
-    print("Que alegria!")
+    return strg 
+  
 
 class Game:
   boardSize = 10
@@ -93,14 +104,19 @@ class Game:
           contador +=1
       resta+=1
     if (contador == 15 and contador2 >0):
-      return 'J2'    
-    print(contador)
+      return 'J2'
     # Si llega a este punto, el juego sigue
     return 'continue'
-game = Game()
-# game.table.table[0][0].value = '2'
 
-print(game.table)
-print(game.checkGameState())
-# game.fill()
-# game.toString()
+if __name__ == '__main__':
+
+  game = Game()
+  print(game.table)
+
+  p1 = Player('1', game)
+  p1.populate()
+  p2 = Player('2', game)
+  p2.populate()
+  print(game.checkGameState())
+  print(p1.positions)
+  print(p2.positions)
