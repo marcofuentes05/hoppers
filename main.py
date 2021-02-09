@@ -1,58 +1,65 @@
 import numpy as np
 from collections import namedtuple
 import copy
+import math
 
 Move= namedtuple('Move' , 'player initialPosition sequence')
+Result= namedtuple('Result' , 'table')
 class Player:
-  def __init__(self, identifier, game):
+  def __init__(self, identifier):
     self.identifier = identifier
-    self.game = game
     self.positions = []
     self.moves=[]
-  
+    if identifier == '1':
+      self.initialPosition=(0,0)
+    else:
+      self.initialPosition=(9,9)
+
   # Esta funcion escanea el tablero y me dice las posiciones de mis fichas
-  def populate(self):
+  def scan(self, game):
     for i in range(10):
       for j in range(10):
-        if self.game.table.table[i][j].value == self.identifier:
+        if game.table.table[i][j].value == self.identifier:
           self.positions.append((i,j))
 
-  def checkSteps(self, position):
+  def checkSteps(self, position, game):
     (fila, columna) = position
     for i in range(columna-1, columna + 2):
       for j in range (fila-1, fila+2):
-        if 0 <= j < 10 and 0 <= i < 10 and self.game.table.table[j][i].value == '0':
+        if 0 <= j < 10 and 0 <= i < 10 and game.table[j][i].value == '0':
           self.moves.append(Move(self.identifier, position, [(j,i)]))
 
-  def checkHopsRecursive(self, move):
+  def checkHopsRecursive(self, move, game):
     (fila, columna) = move.sequence[len(move.sequence) - 1]
     for i in range(columna-1, columna+2):
       for j in range (fila-1, fila+2):
-        if 0<= i < 10 and 0<=j<10 and self.game.table.table[j][i].value != '0':
+        if 0<= i < 10 and 0<=j<10 and game.table[j][i].value != '0':
           nuevaFila = j + j - fila
           nuevaColumna = i + i - columna
-          if 0 <= nuevaFila <10 and 0 <= nuevaColumna <10 and self.game.table.table[nuevaFila][nuevaColumna].value == '0' and (nuevaFila, nuevaColumna) not in move.sequence:
+          if 0 <= nuevaFila <10 and 0 <= nuevaColumna <10 and game.table[nuevaFila][nuevaColumna].value == '0' and (nuevaFila, nuevaColumna) not in move.sequence:
             move0 = copy.deepcopy(move)
+            move0 = move
             move0.sequence.append((nuevaFila, nuevaColumna))
             self.moves.append(move0)
-            self.checkHopsRecursive(move0)
+            self.checkHopsRecursive(move0, game)
   
-  def checkHops(self, position):
+  def checkHops(self, position, game):
     (fila, columna) = position
     for i in range(columna-1, columna+2):
       for j in range (fila-1, fila+2):
-        if self.game.table.table[j][i].value != '0':
-          nuevaFila = j + j - fila
-          nuevaColumna = i + i - columna
-          if 0 <= nuevaFila <10 and 0 <= nuevaColumna <10 and self.game.table.table[nuevaFila][nuevaColumna].value == '0':
-            move = Move(self.identifier, position, [(nuevaFila,nuevaColumna)])
-            self.moves.append(move)
-            self.checkHopsRecursive(move)
+        if 0<=i <10 and 0<=j<10:
+          if game.table[j][i].value != '0':
+            nuevaFila = j + j - fila
+            nuevaColumna = i + i - columna
+            if 0 <= nuevaFila <10 and 0 <= nuevaColumna <10 and game.table[nuevaFila][nuevaColumna].value == '0':
+              move = Move(self.identifier, position, [(nuevaFila,nuevaColumna)])
+              self.moves.append(move)
+              self.checkHopsRecursive(move, game)
 
-  def possible_moves(self):
+  def possible_moves(self, gameState):
     for position in self.positions:
-      self.checkSteps(position)
-      self.checkHops(position)
+      self.checkSteps(position, gameState)
+      self.checkHops(position, gameState)
   
   def madeMove(self):
     self.moves = []
@@ -63,7 +70,7 @@ class Player:
     print("Que alegria!")
 
   def __str__(self):
-    return str(self.positions)
+    return str('JUGADOR: {}\nCon coordenadas: {}'.format(self.identifier, self.moves))
 
 class Cell:
   possible_values = ('0', '1', '2')
@@ -105,15 +112,21 @@ class Table():
       strg += "\n"
     return strg 
   
-
 class Game:
   boardSize = 10
   def __init__(self):
     self.table = Table(self.boardSize)
     self.table.fill()
-    self.player1 = Player("Jugador 1", "1")
-    self.player2 = Player("Jugador 2", "2")
     self.turn = True #True para j1, False para j2
+    self.player1 = Player('1')
+    self.player2 = Player('2')
+
+  def to_move(self):
+    if self.turn:
+      return self.player1
+    else:
+      return self.player2
+  
   def checkGameState(self): 
     # Revisa si alguien ya gano, o si sigue el juego
     # Primero revisa si j1 ha ganado
@@ -150,7 +163,31 @@ class Game:
     # Si llega a este punto, el juego sigue
     return 'continue'
 
+  def actions(self, state):
+    if self.turn:
+      p1.scan(self)
+      p1.possible_moves(state)
+      return p1.moves
+    else:
+      p2.scan(self)
+      p2.possible_moves(state)
+      return p2.moves
+
+  def utility(self, table, player):
+    param = player.identifier
+    (fila, columna) = player.initialPosition
+    utility = 0
+    for i in range(10):
+      for j in range(10):
+        if table.table[i][j].value == param:
+          try:
+            utility += 1/math.sqrt( (i - (10 - fila))**2 + (j - (10-columna))**2  ) # distancia a la esquina opuesta
+          except:
+            utility += 50
+    return utility
+
   # Actualiza el tablero cuando un jugador decide 
+  # Basicamente es una funcion de transicion, aunque si afecta el juego en tiempo real
   def makeMove(self, move):
     (fila, columna) = move.initialPosition
     (filaFinal, columnaFinal) = move.sequence[len(move.sequence)-1] #la ultima posicion
@@ -158,44 +195,117 @@ class Game:
     self.table.table[filaFinal][columnaFinal].value=move.player
     self.turn = not self.turn
 
+  def result(self,state, move): #state sera un snapshot de tablero, turno
+    tablero = copy.deepcopy(self.table)
+    (filaI, columnaI) = move.initialPosition
+    (filaF, columnaF) = move.sequence[len(move.sequence) - 1]
+    identifier = move.player
+    tablero.table[filaI][columnaI].value = '0'
+    tablero.table[filaF][columnaF].value = identifier
+    return tablero
+
+  def terminal_test(self, state): 
+    # Revisa si alguien ya gano, o si sigue el juego
+    # state es un objeto Table (inicialmente es self.table, pero para minimax es mejor pasarlo como parametro)
+    inicio=5
+    resta=0
+    contador = 0
+    contador1 = 0
+    contador2 = 0
+    for i in range(inicio):
+      for j in range(inicio-resta):
+        val = state.table[self.boardSize - 1 - i][self.boardSize - 1 - j].value
+        valOpuesto = state.table[i][j].value
+        if (val != '0'):
+          if (val == '1'):
+            contador1 += 1
+          if (valOpuesto == '2'):
+            contador2 += 1
+          contador +=1
+      resta+=1
+    if (contador == 15 and (contador1 > 0 or contador2 > 0)):
+      return True
+    # Si llega a este punto, el juego sigue
+    return False
+
+def alpha_beta_cutoff_search(state, game, d=2, cutoff_test=None, eval_fn=None):
+
+  player = game.to_move()
+  def max_value(state, alpha, beta, depth):
+    # if cutoff_test(state, depth):
+    if depth < d:
+      return eval_fn(state)
+    print('depth: {}'.format(depth))
+    v = -np.inf
+    variable = game.actions(state)
+    print('LEN: ',len(variable))
+    for a in variable:
+      v2 = max(v, min_value(game.result(state, a), alpha, beta, depth + 1))
+      if v2 >= beta:
+        v = v2
+        return v
+      alpha = max(alpha, v)
+    return v
+
+  def min_value(state, alpha, beta, depth):
+    # if cutoff_test(state, depth):
+    if depth < d:
+      return eval_fn(state)
+    print('depth: {}'.format(depth))
+    v = np.inf
+    variable = game.actions(state)
+    print('LEN: ',len(variable))
+    for a in variable:
+      v2 = min(v, max_value(game.result(state, a), alpha, beta, depth + 1))
+      if v2 <= alpha:
+        v= v2
+        return v
+      beta = min(beta, v)
+    return v
+
+  cutoff_test = (cutoff_test or (lambda state, depth: depth > d or game.terminal_test(state) or len(game.actions(state)) > 500 ))
+  eval_fn = eval_fn or (lambda state: game.utility(state, player))
+  best_score = -np.inf
+  beta = np.inf
+  best_action = None
+  for a in game.actions(state):
+    v = min_value(game.result(state, a), best_score, beta, 1)
+    if v > best_score:
+      best_score = v
+      best_action = a
+  return best_action
+
 if __name__ == '__main__':
-
+  
   game = Game()
-  # game.table.table[4][5].value='1'
-  # game.table.table[3][4].value='2'
-  # game.table.table[5][4].value='2'
-  # game.table.table[3][4].value='2'
-  # game.table.table[3][6].value='2'
-  # game.table.table[3][8].value='2'
-  # game.table.table[5][8].value='2'
-  # game.table.table[1][6].value='2'
+  p1 = game.player1
+  p2 = game.player2
+  p1.scan(game)
+  p1.possible_moves(game.table)
+  # print('A punto de correr el algoritmo')
+  # variable = alpha_beta_cutoff_search(game.table, game)
+  # print(variable)
+  # print('Listo!')
 
-  p1 = Player('1', game)
-  p2 = Player('2', game)
-  p1.populate()
-  p1.possible_moves()
-
-  while game.checkGameState() == 'continue':
-    print(game.table)
+  print(game.table)
+  while not game.terminal_test(game.table):
+    print('TURNO DE {}'.format('J1' if game.turn else 'J2'))
     if game.turn:
-      print('\nP1 POSSIBLE MOVES:\n')
-      for (index, i) in enumerate(p1.moves):
-        print(index, i)
-    else:
-      print('\nP2 POSSIBLE MOVES:\n')
-      for (index, i) in enumerate(p2.moves):
-        print(index, i)
-    moveIndex = input('ingresa el indice del movimiento:\n')
-    if game.turn:
-      game.makeMove(p1.moves[int(moveIndex)])
+      variable = alpha_beta_cutoff_search(game.table, game)
+      print('J1 decide jugar: {}'.format(variable))
+      game.makeMove(variable)
       p1.madeMove()
-      p2.populate()
-      p2.possible_moves()
+      p2.scan(game)
+      p2.possible_moves(game.table)
     else:
-      game.makeMove(p2.moves[int(moveIndex)])
+      print(p2.moves)
+      variable = input('Ingresa el indice del movimiento:\n')#alpha_beta_cutoff_search(game.table, game)
+      game.makeMove(p2.moves[int(variable)])
+      print('J2 decide jugar: {}'.format(p2.moves[int(variable)]))
       p2.madeMove()
-      p1.populate()
-      p1.possible_moves()
+      p1.scan(game)
+      p1.possible_moves(game.table)
+    print(game.table)
 
-
-    # print(game.checkGameState())
+  
+  print(game.checkGameState())    
