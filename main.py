@@ -26,19 +26,18 @@ class Player:
     (fila, columna) = position
     for i in range(columna-1, columna + 2):
       for j in range (fila-1, fila+2):
-        if 0 <= j < 10 and 0 <= i < 10 and game.table[j][i].value == '0':
+        if 0 <= j < 10 and 0 <= i < 10 and game.table[j][i].value == '.':
           self.moves.append(Move(self.identifier, position, [(j,i)]))
 
   def checkHopsRecursive(self, move, game):
     (fila, columna) = move.sequence[len(move.sequence) - 1]
     for i in range(columna-1, columna+2):
       for j in range (fila-1, fila+2):
-        if 0<= i < 10 and 0<=j<10 and game.table[j][i].value != '0':
+        if 0<= i < 10 and 0<=j<10 and game.table[j][i].value != '.':
           nuevaFila = j + j - fila
           nuevaColumna = i + i - columna
-          if 0 <= nuevaFila <10 and 0 <= nuevaColumna <10 and game.table[nuevaFila][nuevaColumna].value == '0' and (nuevaFila, nuevaColumna) not in move.sequence:
+          if 0 <= nuevaFila <10 and 0 <= nuevaColumna <10 and game.table[nuevaFila][nuevaColumna].value == '.' and (nuevaFila, nuevaColumna) not in move.sequence:
             move0 = copy.deepcopy(move)
-            move0 = move
             move0.sequence.append((nuevaFila, nuevaColumna))
             self.moves.append(move0)
             self.checkHopsRecursive(move0, game)
@@ -48,10 +47,10 @@ class Player:
     for i in range(columna-1, columna+2):
       for j in range (fila-1, fila+2):
         if 0<=i <10 and 0<=j<10:
-          if game.table[j][i].value != '0':
+          if game.table[j][i].value != '.':
             nuevaFila = j + j - fila
             nuevaColumna = i + i - columna
-            if 0 <= nuevaFila <10 and 0 <= nuevaColumna <10 and game.table[nuevaFila][nuevaColumna].value == '0':
+            if 0 <= nuevaFila <10 and 0 <= nuevaColumna <10 and game.table[nuevaFila][nuevaColumna].value == '.':
               move = Move(self.identifier, position, [(nuevaFila,nuevaColumna)])
               self.moves.append(move)
               self.checkHopsRecursive(move, game)
@@ -73,7 +72,7 @@ class Player:
     return str('JUGADOR: {}\nCon coordenadas: {}'.format(self.identifier, self.moves))
 
 class Cell:
-  possible_values = ('0', '1', '2')
+  possible_values = ('.', '1', '2')
   def __init__(self):
     self.value=self.possible_values[0]
   def __str__(self):
@@ -105,11 +104,13 @@ class Table():
       print(strg)
   
   def __str__(self):
-    strg = ""
+    strg = "    0 1 2 3 4 5 6 7 8 9 \n  ------------------------\n"
     for i in range(10):
+      strg += "{} | ".format(i)
       for j in range(10):
         strg += "{} ".format(self.table[i][j])
-      strg += "\n"
+      strg += " | \n"
+    strg += '  ________________________'
     return strg 
   
 class Game:
@@ -137,13 +138,13 @@ class Game:
     for i in range(inicio):
       for j in range(inicio-resta):
         val = self.table.table[self.boardSize - 1 - i][self.boardSize - 1 - j].value
-        if (val != '0'):
+        if (val != '.'):
           if (val == '1'):
             contador1 += 1
           contador +=1
       resta+=1
     if (contador == 15 and contador1 >0):
-      return 'J1'
+      return 'J1 HA GANADO'
 
     # Luego revisa si j2 ha ganado
     inicio=5
@@ -153,13 +154,13 @@ class Game:
     for i in range(inicio):
       for j in range(inicio-resta):
         val = self.table.table[i][j].value
-        if (val != '0'):
+        if (val != '.'):
           if (val == '2'):
             contador2 += 1
           contador +=1
       resta+=1
     if (contador == 15 and contador2 >0):
-      return 'J2'
+      return 'J2 HA GANADO'
     # Si llega a este punto, el juego sigue
     return 'continue'
 
@@ -181,7 +182,7 @@ class Game:
       for j in range(10):
         if table.table[i][j].value == param:
           try:
-            utility += 1/math.sqrt( (i - (10 - fila))**2 + (j - (10-columna))**2  ) # distancia a la esquina opuesta
+            utility = utility +  1/( (i - (10 - fila))**2 + (j - (10-columna))**2  )  # distancia a la esquina opuesta
           except:
             utility += 50
     return utility
@@ -191,7 +192,7 @@ class Game:
   def makeMove(self, move):
     (fila, columna) = move.initialPosition
     (filaFinal, columnaFinal) = move.sequence[len(move.sequence)-1] #la ultima posicion
-    self.table.table[fila][columna].value='0'
+    self.table.table[fila][columna].value='.'
     self.table.table[filaFinal][columnaFinal].value=move.player
     self.turn = not self.turn
 
@@ -200,7 +201,7 @@ class Game:
     (filaI, columnaI) = move.initialPosition
     (filaF, columnaF) = move.sequence[len(move.sequence) - 1]
     identifier = move.player
-    tablero.table[filaI][columnaI].value = '0'
+    tablero.table[filaI][columnaI].value = '.'
     tablero.table[filaF][columnaF].value = identifier
     return tablero
 
@@ -216,7 +217,7 @@ class Game:
       for j in range(inicio-resta):
         val = state.table[self.boardSize - 1 - i][self.boardSize - 1 - j].value
         valOpuesto = state.table[i][j].value
-        if (val != '0'):
+        if (val != '.'):
           if (val == '1'):
             contador1 += 1
           if (valOpuesto == '2'):
@@ -278,14 +279,20 @@ def alpha_beta_cutoff_search(state, game, d=2, cutoff_test=None, eval_fn=None):
 if __name__ == '__main__':
   
   game = Game()
+  # game.table.table[5][5].value = '1'
+  # game.table.table[4][4].value = '2'
+  # game.table.table[2][2].value = '2'
+  # game.table.table[2][3].value = '2'
+  # game.table.table[4][6].value = '2'
+  # game.table.table[6][6].value = '2'
+  # game.table.table[6][4].value = '2'
+  print(game.table)
   p1 = game.player1
   p2 = game.player2
   p1.scan(game)
   p1.possible_moves(game.table)
-  # print('A punto de correr el algoritmo')
-  # variable = alpha_beta_cutoff_search(game.table, game)
-  # print(variable)
-  # print('Listo!')
+  for move in p1.moves:
+    print(move)
 
   print(game.table)
   while not game.terminal_test(game.table):
@@ -298,10 +305,12 @@ if __name__ == '__main__':
       p2.scan(game)
       p2.possible_moves(game.table)
     else:
-      print(p2.moves)
-      variable = input('Ingresa el indice del movimiento:\n')#alpha_beta_cutoff_search(game.table, game)
-      game.makeMove(p2.moves[int(variable)])
-      print('J2 decide jugar: {}'.format(p2.moves[int(variable)]))
+      # print(p2.moves)
+      # variable = input('Ingresa el indice del movimiento:\n')#alpha_beta_cutoff_search(game.table, game)
+      # game.makeMove(p2.moves[int(variable)])
+      variable = alpha_beta_cutoff_search(game.table, game)
+      print('J2 decide jugar: {}'.format(variable))
+      game.makeMove(variable)
       p2.madeMove()
       p1.scan(game)
       p1.possible_moves(game.table)
