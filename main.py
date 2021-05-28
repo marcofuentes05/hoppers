@@ -255,15 +255,17 @@ class Game:
 
   def actions(self, state):
     if self.turn:
-      p1.moves = []
-      p1.scan(self)
-      p1.possible_moves(state)
-      return p1.moves
+      player = copy.deepcopy(p1)
+      player.moves = []
+      player.scan(self)
+      player.possible_moves(state)
+      return player.moves
     else:
-      p2.moves = []
-      p2.scan(self)
-      p2.possible_moves(state)
-      return p2.moves
+      player = copy.deepcopy(p2)
+      player.moves = []
+      player.scan(self)
+      player.possible_moves(state)
+      return player.moves
 
   def utility(self, table, player):
       param = player.identifier
